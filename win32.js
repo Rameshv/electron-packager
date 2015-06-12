@@ -5,8 +5,12 @@ var mkdirp = require('mkdirp')
 var rimraf = require('rimraf')
 var ncp = require('ncp').ncp
 var mv = require('mv')
-var rcedit = require('rcedit')
+var resourcehacker  = require('resourcehacker')
 var common = require('./common')
+var spawn = require('child_process').spawn
+var tmp = require('tmp')
+var fs = require('fs')
+
 
 module.exports = {
   createApp: function createApp (opts, electronApp, cb) {
@@ -62,11 +66,70 @@ function buildWinApp (opts, cb, newApp) {
           var finalPath = path.join(opts.out || process.cwd(), opts.name + '-win32', 'resources')
           common.asarApp(finalPath, function (err) {
             if (err) return cb(err)
-            updateIcon()
+            updateVersionInfo()
           })
         } else {
-          updateIcon()
+          updateVersionInfo()
         }
+      })
+    }
+
+    function convertRCtoRES(resourcefile) {
+      var cmdLine,Winreg
+      if (process.platform == "win32") {
+        Winreg = require('winreg')
+        regkey = new Winreg({
+          hive : Winreg.HKLM,
+          key : '\\SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows'
+        })
+        regKey.values(function (err, items) {
+          if (err)
+            console.log('ERROR: '+err);
+          else{
+            for (var i in items){
+              if (items[i].name == 'CurrentInstallFolder'){
+                var rcExe = items[i].value
+                var tmpObj = tmp.fileSync({postfix:'.res'})
+                var args = resourcefile + ' ' + tmpObj.name
+                var child = spawn(rcExe,args)
+                child.stdout.pipe(process.stdout);
+                child.stderr.pipe(process.stderr);
+                var stderr = '';
+                child.on('error', function(err) {
+                  if (callback) {
+                    callback(err);
+                  }
+                });
+                child.stderr.on('data', function(data) {
+                  stderr += data;
+                });
+                child.on('close', function(code) {
+                  if (code === 0) {
+                    if (callback) {
+                      callback(null,tmpObj.name);
+                    }
+                  } else {
+                    if (callback) {
+                      callback(stderr);
+                    }
+                  }
+                });
+              }
+            }
+          }
+        });
+      }
+    }
+
+    function updateVersionInfo() {
+      convertRCtoRES(opts.resourcefile,function(err,resfile){
+        if (err) return;
+        var exePath = path.join(opts.out || process.cwd(), opts.name + '-win32', opts.name + '.exe')
+        var args = '-addoverwrite ' + exePath + ', ' + exePath + ', ' + resfile + ',,,'
+        resourcehacker(args,function(function(err){
+          if (err) return;
+          updateIcon()
+        })
       })
     }
 
@@ -76,12 +139,8 @@ function buildWinApp (opts, cb, newApp) {
       if (!opts.icon) {
         return cb(null, finalPath)
       }
-
       var exePath = path.join(opts.out || process.cwd(), opts.name + '-win32', opts.name + '.exe')
-
-      rcedit(exePath, {icon: opts.icon}, function (err) {
-        cb(err, finalPath)
-      })
+      var args = '-addoverwrite '  + exePath + ', ' + exePath + ', ' + opts.icon + ', ICONGROUP,MAINICON,0'
     }
 
     common.prune(opts, paths.app, cb, moveApp)

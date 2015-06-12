@@ -25,8 +25,10 @@
     "mv": "^2.0.3",
     "ncp": "^2.0.0",
     "plist": "^1.1.0",
-    "rcedit": "^0.3.0",
-    "rimraf": "^2.3.2"
+    "resourcehacker": "^3.6.0",
+    "rimraf": "^2.3.2",
+    "tmp": "0.0.26",
+    "winreg": "0.0.12"
   },
   "devDependencies": {
     "standard": "^3.3.2"
