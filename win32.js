@@ -126,7 +126,7 @@ function buildWinApp (opts, cb, newApp) {
         if (err) return;
         var exePath = path.join(opts.out || process.cwd(), opts.name + '-win32', opts.name + '.exe')
         var args = '-addoverwrite ' + exePath + ', ' + exePath + ', ' + resfile + ',,,'
-        resourcehacker(args,function(function(err){
+        resourcehacker(args,function(err){
           if (err) return;
           updateIcon()
         })
@@ -141,6 +141,10 @@ function buildWinApp (opts, cb, newApp) {
       }
       var exePath = path.join(opts.out || process.cwd(), opts.name + '-win32', opts.name + '.exe')
       var args = '-addoverwrite '  + exePath + ', ' + exePath + ', ' + opts.icon + ', ICONGROUP,MAINICON,0'
+      resourcehacker(args,function(err){
+        if (err) return;
+      })
+
     }
 
     common.prune(opts, paths.app, cb, moveApp)
